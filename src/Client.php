@@ -13,6 +13,7 @@ use GuzzleHttp\Middleware;
 use GuzzleHttp\Promise;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
+use Denpa\Bitcoin\Responses\BitcoindResponse;
 
 class Client
 {
@@ -56,11 +57,12 @@ class Client
     /**
      * Constructs new client.
      *
-     * @param array|string $config
+     * @param  array|string  $config
      *
      * @return void
+     * @throws \Denpa\Bitcoin\Exceptions\BadConfigurationException
      */
-    public function __construct($config = [])
+    public function __construct(array|string $config = [])
     {
         if (is_string($config)) {
             $config = split_url($config);
@@ -142,10 +144,11 @@ class Client
     /**
      * Makes request to Bitcoin Core.
      *
-     * @param string $method
-     * @param mixed  $params
+     * @param  string  $method
+     * @param  mixed  $params
      *
      * @return \Psr\Http\Message\ResponseInterface
+     * @throws \Throwable
      */
     public function request(string $method, ...$params): ResponseInterface
     {
@@ -160,7 +163,7 @@ class Client
 
             return $response;
         } catch (Throwable $exception) {
-            throw exception()->handle($exception);
+            exception()->handle($exception);
         }
     }
 
@@ -168,19 +171,18 @@ class Client
      * Makes async request to Bitcoin Core.
      *
      * @param string        $method
-     * @param mixed         $params
+     * @param  mixed|array  $params
      * @param callable|null $fulfilled
      * @param callable|null $rejected
      *
-     * @return \GuzzleHttp\Promise\Promise
+     * @return \GuzzleHttp\Promise\PromiseInterface
      */
     public function requestAsync(
         string $method,
-        $params = [],
+        mixed $params = [],
         ?callable $fulfilled = null,
         ?callable $rejected = null
-    ): Promise\Promise
-    {
+    ): Promise\PromiseInterface {
         $promise = $this->client
             ->postAsync($this->path, $this->makeJson($method, $params));
 
@@ -209,21 +211,22 @@ class Client
     public function wait(): void
     {
         if (!empty($this->promises)) {
-            Promise\settle($this->promises)->wait();
+            \GuzzleHttp\Promise\Utils::settle($this->promises)->wait();
         }
     }
 
     /**
      * Makes request to Bitcoin Core.
      *
-     * @param string $method
-     * @param array  $params
+     * @param  string  $method
+     * @param  array  $params
      *
-     * @return \GuzzleHttp\Promise\Promise|\Psr\Http\Message\ResponseInterface
+     * @return \GuzzleHttp\Promise\PromiseInterface|\Psr\Http\Message\ResponseInterface
+     * @throws \Throwable
      */
     public function __call(string $method, array $params = [])
     {
-        if (strtolower(substr($method, -5)) == 'async') {
+        if (strtolower(substr($method, -5)) === 'async') {
             return $this->requestAsync(substr($method, 0, -5), ...$params);
         }
 
@@ -237,7 +240,7 @@ class Client
      */
     protected function getConfigProvider(): string
     {
-        return 'Denpa\\Bitcoin\\Config';
+        return Config::class;
     }
 
     /**
@@ -247,7 +250,7 @@ class Client
      */
     protected function getResponseHandler(): string
     {
-        return 'Denpa\\Bitcoin\\Responses\\BitcoindResponse';
+        return BitcoindResponse::class;
     }
 
     /**
@@ -279,7 +282,7 @@ class Client
      *
      * @return array
      */
-    protected function makeJson(string $method, $params = []): array
+    protected function makeJson(string $method, mixed $params = []): array
     {
         return [
             'json' => [
