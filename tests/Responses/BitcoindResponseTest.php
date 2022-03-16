@@ -470,7 +470,7 @@ class BitcoindResponseTest extends TestCase
      */
     public function testProtocolVersion(): void
     {
-        $response = $this->response->withProtocolVersion(1.0);
+        $response = $this->response->withProtocolVersion('1.0');
         $protocolVersion = $response->getProtocolVersion();
 
         $this->assertEquals('1.0', $protocolVersion);
@@ -558,13 +558,15 @@ class BitcoindResponseTest extends TestCase
     public function testSerialize(): void
     {
         $serializedContainer = serialize($this->response->toContainer());
+        $containerCount = count($this->response->toContainer());
 
         $serialized = sprintf(
-            'C:%u:"%s":%u:{%s}',
+            'O:%u:"%s":%u:%s',
             strlen(BitcoindResponse::class),
             BitcoindResponse::class,
-            strlen($serializedContainer),
-            $serializedContainer
+            $containerCount,
+            // "a:{count}:" not represent in serialize string in php 8.1
+            substr($serializedContainer, 3 + strlen((string)$containerCount))
         );
 
         $this->assertEquals(

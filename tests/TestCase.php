@@ -117,8 +117,8 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
     /**
      * Get Guzzle mock client.
      *
-     * @param array                    $queue
-     * @param \GuzzleHttp\HandlerStack $handler
+     * @param  array  $queue
+     * @param  \GuzzleHttp\HandlerStack|null  $handler
      *
      * @return \GuzzleHttp\Client
      */
@@ -142,9 +142,10 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
     /**
      * Make block header response.
      *
-     * @param int $code
+     * @param  int  $code
      *
      * @return \Psr\Http\Message\ResponseInterface
+     * @throws \JsonException
      */
     protected function getBlockResponse(int $code = 200): ResponseInterface
     {
@@ -152,7 +153,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
             'result' => self::$getBlockResponse,
             'error'  => null,
             'id'     => 0,
-        ]);
+        ], JSON_THROW_ON_ERROR);
 
         return new Response($code, [], $json);
     }
@@ -160,9 +161,10 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
     /**
      * Get getbalance command response.
      *
-     * @param int $code
+     * @param  int  $code
      *
      * @return \Psr\Http\Message\ResponseInterface
+     * @throws \JsonException
      */
     protected function getBalanceResponse(int $code = 200): ResponseInterface
     {
@@ -170,7 +172,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
             'result' => self::$balanceResponse,
             'error'  => null,
             'id'     => 0,
-        ]);
+        ], JSON_THROW_ON_ERROR);
 
         return new Response($code, [], $json);
     }
@@ -178,9 +180,10 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
     /**
      * Make raw transaction error response.
      *
-     * @param int $code
+     * @param  int  $code
      *
      * @return \Psr\Http\Message\ResponseInterface
+     * @throws \JsonException
      */
     protected function rawTransactionError(int $code = 500): ResponseInterface
     {
@@ -188,7 +191,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
             'result' => null,
             'error'  => self::$rawTransactionError,
             'id'     => 0,
-        ]);
+        ], JSON_THROW_ON_ERROR);
 
         return new Response($code, [], $json);
     }
@@ -218,11 +221,9 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
      */
     protected function requestExceptionWithoutResponse(): callable
     {
-        $exception = function ($request) {
+        return static function ($request) {
             return new RequestException('test', $request);
         };
-
-        return $exception;
     }
 
     /**
@@ -241,7 +242,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
     ): array {
         return [
             'method' => $method,
-            'params' => (array) $params,
+            'params' => $params,
             'id'     => $id,
         ];
     }
@@ -258,22 +259,29 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
         if (isset($this->history[$index])) {
             return $this->history[$index]['request']->getUri();
         }
+
+        return null;
     }
 
     /**
      * Get request body from history.
      *
-     * @param int $index
+     * @param  int  $index
      *
-     * @return mixed
+     * @return array|null
+     * @throws \JsonException
      */
-    protected function getHistoryRequestBody(int $index = 0)
+    protected function getHistoryRequestBody(int $index = 0): array|null
     {
         if (isset($this->history[$index])) {
             return json_decode(
                 $this->history[$index]['request']->getBody()->getContents(),
-                true
+                true,
+                512,
+                JSON_THROW_ON_ERROR
             );
         }
+
+        return null;
     }
 }

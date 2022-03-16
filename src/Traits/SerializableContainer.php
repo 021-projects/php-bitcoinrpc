@@ -37,4 +37,14 @@ trait SerializableContainer
     {
         return $this->toContainer();
     }
+
+    public function __serialize(): array
+    {
+        return $this->toContainer();
+    }
+
+    public function __unserialize(array $data): void
+    {
+        $this->container = $data;
+    }
 }
